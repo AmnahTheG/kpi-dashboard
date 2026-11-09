@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KPI Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, "Segoe UI", sans-serif; background: #f0f2f5; min-height: 100vh; }
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 0 32px; height: 56px; background: #1f2328; color: #fff; }
+    nav .brand { font-size: 18px; font-weight: 700; }
+    nav .right { display: flex; align-items: center; gap: 16px; }
+    nav .user { font-size: 14px; color: #c9d1d9; }
+    nav button { padding: 6px 14px; background: transparent; border: 1px solid #57606a; color: #c9d1d9; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .top-bar h2 { font-size: 20px; color: #1f2328; }
+    .new-btn { padding: 9px 18px; background: #3b82d4; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+
+    /* KPI Card */
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; }
+    .dept { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #57606a; letter-spacing: .5px; }
+    .badge { font-size: 12px; font-weight: 600; }
+    .kpi-name { font-size: 16px; color: #1f2328; font-weight: 600; }
+    .values { display: flex; gap: 24px; }
+    .val-label { display: block; font-size: 11px; color: #57606a; margin-bottom: 2px; }
+    .val-num { display: block; font-size: 15px; font-weight: 700; color: #1f2328; }
+    .bar-bg { height: 6px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width .4s; }
+    .actions { display: flex; gap: 8px; margin-top: 4px; }
+    .btn-primary   { flex:1; padding: 7px 0; background: #3b82d4; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600; }
+    .btn-secondary { flex:1; padding: 7px 0; background: #f7f8fa; color:#1f2328; border:1px solid #e5e7eb; border-radius:6px; cursor:pointer; font-size:13px; }
+    .btn-danger    { padding: 7px 12px; background:#fff0f0; color:#dc2626; border:1px solid #fecaca; border-radius:6px; cursor:pointer; font-size:13px; }
+
+    /* Modal */
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; z-index:100; }
+    .modal { background:#fff; border-radius:12px; padding:28px; width:90%; max-width:420px; }
+    .modal.wide { max-width: 640px; }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+    .modal-header h3 { font-size:17px; color:#1f2328; }
+    .close-btn { background:none; border:none; font-size:18px; cursor:pointer; color:#57606a; }
+    .form { display:flex; flex-direction:column; gap:10px; }
+    .form label { font-size:13px; font-weight:500; color:#57606a; }
+    .form input, .form select, .form textarea { padding:9px 12px; border:1px solid #e5e7eb; border-radius:7px; font-size:14px; font-family:inherit; }
+    .submit-btn { margin-top:6px; padding:10px 0; background:#3b82d4; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer; font-size:15px; }
+    .empty-state { color:#57606a; text-align:center; margin-top:60px; font-size:15px; }
+    .hidden { display:none !important; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="brand">📊 KPI Dashboard</span>
+  <div class="right">
+    <span class="user">👤 {{ user.name }}</span>
+    <button onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<main>
+  <div class="top-bar">
+    <h2>My KPIs</h2>
+    <button class="new-btn" onclick="openNewKpiModal()">+ New KPI</button>
+  </div>
+  <p id="emptyState" class="empty-state hidden">No KPIs yet. Click <strong>+ New KPI</strong> to get started.</p>
+  <div class="grid" id="kpiGrid"></div>
+</main>
+
+<!-- New KPI Modal -->
+<div class="overlay hidden" id="newKpiOverlay" onclick="closeModal('newKpiOverlay')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>New KPI</h3>
+      <button class="close-btn" onclick="closeModal('newKpiOverlay')">✕</button>
+    </div>
+    <div class="form">
+      <label>KPI Name</label>
+      <input id="kpiName" placeholder="e.g. Monthly Revenue" />
+      <label>Unit</label>
+      <input id="kpiUnit" placeholder="e.g. $, %, tickets" />
+      <label>Target</label>
+      <input id="kpiTarget" type="number" placeholder="e.g. 50000" />
+      <label>Department</label>
+      <input id="kpiDept" placeholder="e.g. Sales, Marketing" />
+      <label>Frequency</label>
+      <select id="kpiFreq">
+        <option value="monthly">Monthly</option>
+        <option value="weekly">Weekly</option>
+        <option value="daily">Daily</option>
+      </select>
+      <button class="submit-btn" onclick="createKpi()">Create KPI</button>
+    </div>
+  </div>
+</div>
+
+<!-- Log Entry Modal -->
+<div class="overlay hidden" id="logEntryOverlay" onclick="closeModal('logEntryOverlay')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="logEntryTitle">Log Entry</h3>
+      <button class="close-btn" onclick="closeModal('logEntryOverlay')">✕</button>
+    </div>
+    <div class="form">
+      <label id="logEntryUnitLabel">Actual Value</label>
+      <input id="entryValue" type="number" placeholder="e.g. 42000" />
+      <label>Period</label>
+      <input id="entryPeriod" placeholder="e.g. 2024-11 or 2024-W45" />
+      <label>Note (optional)</label>
+      <input id="entryNote" placeholder="Any context about this value" />
+      <button class="submit-btn" onclick="logEntry()">Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let kpisData    = [];
+  let entriesData = {};
+  let activeKpiId = null;
+
+  // ── Load data on page load ──────────────────────────────────
+  window.onload = async function() {
+    await loadKpis();
+  };
+
+  async function loadKpis() {
+    const res  = await fetch('/api/kpis');
+    kpisData   = await res.json();
+
+    // Load entries for each KPI
+    await Promise.all(kpisData.map(async kpi => {
+      const r = await fetch(`/api/entries?kpi_id=${kpi.id}`);
+      entriesData[kpi.id] = await r.json();
+    }));
+
+    renderGrid();
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById('kpiGrid');
+    const empt = document.getElementById('emptyState');
+    grid.innerHTML = '';
+
+    if (kpisData.length === 0) { empt.classList.remove('hidden'); return; }
+    empt.classList.add('hidden');
+
+    kpisData.forEach(kpi => {
+      const entries = entriesData[kpi.id] || [];
+      const latest  = entries.length > 0 ? entries[entries.length - 1] : null;
+      const pct     = latest ? Math.round((latest.value / kpi.target) * 100) : null;
+
+      const color = pct === null ? '#57606a' : pct >= 100 ? '#16a34a' : pct >= 80 ? '#d97706' : '#dc2626';
+      const label = pct === null ? 'No data' : pct >= 100 ? '✅ On Track' : pct >= 80 ? '⚠️ Near Target' : '❌ Below Target';
+      const barW  = pct !== null ? Math.min(pct, 100) : 0;
+
+      grid.innerHTML += `
+        <div class="card">
+          <div class="card-header">
+            <span class="dept">${kpi.department || 'General'}</span>
+            <span class="badge" style="color:${color}">${label}</span>
+          </div>
+          <div class="kpi-name">${kpi.name}</div>
+          <div class="values">
+            <div>
+              <span class="val-label">Latest</span>
+              <span class="val-num">${latest ? latest.value.toLocaleString() + ' ' + kpi.unit : '—'}</span>
+            </div>
+            <div>
+              <span class="val-label">Target</span>
+              <span class="val-num">${Number(kpi.target).toLocaleString()} ${kpi.unit}</span>
+            </div>
+            ${pct !== null ? `<div><span class="val-label">Achievement</span><span class="val-num" style="color:${color}">${pct}%</span></div>` : ''}
+          </div>
+          ${pct !== null ? `<div class="bar-bg"><div class="bar-fill" style="width:${barW}%;background:${color}"></div></div>` : ''}
+          <div class="actions">
+            <button class="btn-secondary" onclick="openLogModal(${kpi.id})">+ Log Entry</button>
+            <button class="btn-danger" onclick="deleteKpi(${kpi.id})">🗑</button>
+          </div>
+        </div>`;
+    });
+  }
+
+  // ── Modals ──────────────────────────────────────────────────
+  function openNewKpiModal() {
+    document.getElementById('newKpiOverlay').classList.remove('hidden');
+  }
+
+  function openLogModal(kpiId) {
+    activeKpiId = kpiId;
+    const kpi   = kpisData.find(k => k.id === kpiId);
+    document.getElementById('logEntryTitle').textContent = `Log Entry — ${kpi.name}`;
+    document.getElementById('logEntryUnitLabel').textContent = `Actual Value (${kpi.unit})`;
+    document.getElementById('logEntryOverlay').classList.remove('hidden');
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+  }
+
+  // ── Create KPI ──────────────────────────────────────────────
+  async function createKpi() {
+    const body = {
+      name:       document.getElementById('kpiName').value,
+      unit:       document.getElementById('kpiUnit').value,
+      target:     document.getElementById('kpiTarget').value,
+      department: document.getElementById('kpiDept').value,
+      frequency:  document.getElementById('kpiFreq').value,
+    };
+    await fetch('/api/kpis', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    closeModal('newKpiOverlay');
+    loadKpis();
+  }
+
+  // ── Log entry ───────────────────────────────────────────────
+  async function logEntry() {
+    const body = {
+      kpi_id: activeKpiId,
+      value:  document.getElementById('entryValue').value,
+      period: document.getElementById('entryPeriod').value,
+      note:   document.getElementById('entryNote').value,
+    };
+    await fetch('/api/entries', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    closeModal('logEntryOverlay');
+    loadKpis();
+  }
+
+  // ── Delete KPI ──────────────────────────────────────────────
+  async function deleteKpi(id) {
+    if (!confirm('Delete this KPI and all its entries?')) return;
+    await fetch(`/api/kpis/${id}`, { method:'DELETE' });
+    loadKpis();
+  }
+
+  // ── Logout ──────────────────────────────────────────────────
+  async function logout() {
+    await fetch('/api/logout', { method:'POST' });
+    window.location.href = '/login';
+  }
+</script>
+</body>
+</html>

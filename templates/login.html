@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KPI Dashboard — Login</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, "Segoe UI", sans-serif; background: #f0f2f5; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card { background: #fff; border-radius: 12px; padding: 40px 36px; width: 360px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    h1 { text-align: center; margin-bottom: 24px; font-size: 22px; color: #1f2328; }
+    .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
+    .tab { flex: 1; padding: 8px 0; border: none; background: none; cursor: pointer; color: #57606a; font-weight: 500; font-size: 14px; }
+    .tab.active { color: #3b82d4; font-weight: 600; border-bottom: 2px solid #3b82d4; margin-bottom: -2px; }
+    .form { display: flex; flex-direction: column; gap: 12px; }
+    input { padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; outline: none; }
+    .error { color: #dc2626; font-size: 13px; }
+    .btn { padding: 11px 0; background: #3b82d4; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>📊 KPI Dashboard</h1>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('login')">Login</button>
+      <button class="tab" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <!-- Login form -->
+    <div id="loginForm" class="form">
+      <input id="loginEmail"    type="email"    placeholder="Email" />
+      <input id="loginPassword" type="password" placeholder="Password" />
+      <p id="loginError" class="error hidden"></p>
+      <button class="btn" onclick="login()">Sign In</button>
+    </div>
+
+    <!-- Register form -->
+    <div id="registerForm" class="form hidden">
+      <input id="regName"     type="text"     placeholder="Full Name" />
+      <input id="regEmail"    type="email"    placeholder="Email" />
+      <input id="regPassword" type="password" placeholder="Password" />
+      <p id="regError" class="error hidden"></p>
+      <button class="btn" onclick="register()">Create Account</button>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(tab) {
+      document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+      document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+      document.querySelectorAll('.tab').forEach((btn, i) => btn.classList.toggle('active', (i === 0) === (tab === 'login')));
+    }
+
+    async function login() {
+      const email    = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const errEl    = document.getElementById('loginError');
+
+      const res  = await fetch('/api/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ email, password }) });
+      const data = await res.json();
+
+      if (!res.ok) { errEl.textContent = data.error; errEl.classList.remove('hidden'); return; }
+      window.location.href = '/';
+    }
+
+    async function register() {
+      const name     = document.getElementById('regName').value;
+      const email    = document.getElementById('regEmail').value;
+      const password = document.getElementById('regPassword').value;
+      const errEl    = document.getElementById('regError');
+
+      const res  = await fetch('/api/register', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, email, password }) });
+      const data = await res.json();
+
+      if (!res.ok) { errEl.textContent = data.error; errEl.classList.remove('hidden'); return; }
+      switchTab('login');
+      document.getElementById('loginEmail').value = email;
+    }
+  </script>
+</body>
+</html>
