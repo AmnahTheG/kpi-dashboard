@@ -69,7 +69,7 @@ kpi-dashboard-v2/
 
 ### Step 1 — Clone the repo
 ```bash
-git clone https://github.com/YOUR_USERNAME/kpi-dashboard.git
+git clone https://github.com/AmnahTheG/kpi-dashboard.git
 cd kpi-dashboard
 ```
 
@@ -170,4 +170,4 @@ This project simulates a real business need:
 
 **Amnah Alshwail**  
 MIS Graduate, Imam Abdulrahman bin Faisal University  
-[LinkedIn](https://www.linkedin.com/in/amnah-alshwail) | [GitHub](https://github.com/YOUR_USERNAME)
+[LinkedIn](https://www.linkedin.com/in/amnah-alshwail) | [GitHub](https://github.com/AmnahTheG)
