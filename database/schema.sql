@@ -1,18 +1,10 @@
--- ============================================================
--- KPI Dashboard - MySQL Schema
--- ============================================================
--- Run this file in MySQL Workbench or via the terminal:
+-- KPI Dashboard — MySQL Schema
+-- Run once to initialize the database:
 --   mysql -u root -p kpi_dashboard < schema.sql
--- ============================================================
 
--- Create the database (skip if already created)
 CREATE DATABASE IF NOT EXISTS kpi_dashboard;
 USE kpi_dashboard;
 
--- ── users ─────────────────────────────────────────────────────
--- Stores login credentials for each user.
--- Passwords are stored as bcrypt hashes — never plain text.
--- role: 'admin' can see all KPIs; 'viewer' sees only their own.
 CREATE TABLE IF NOT EXISTS users (
   id         INT AUTO_INCREMENT PRIMARY KEY,
   name       VARCHAR(100) NOT NULL,
@@ -22,19 +14,11 @@ CREATE TABLE IF NOT EXISTS users (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- ── departments ───────────────────────────────────────────────
--- Optional lookup table for department names.
--- Makes Power BI filtering/slicing by department much cleaner.
 CREATE TABLE IF NOT EXISTS departments (
   id   INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL UNIQUE
 );
 
--- ── kpis ──────────────────────────────────────────────────────
--- Each KPI belongs to a user and a department.
--- 'target' is the numeric goal (e.g. 50000 for $50,000 monthly sales).
--- 'unit' describes what the number means (e.g. '$', '%', 'tickets').
--- 'frequency' tells how often to expect a new entry.
 CREATE TABLE IF NOT EXISTS kpis (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   user_id       INT NOT NULL,
@@ -48,10 +32,6 @@ CREATE TABLE IF NOT EXISTS kpis (
   FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
 );
 
--- ── entries ───────────────────────────────────────────────────
--- The actual recorded values for each KPI over time.
--- 'period' is a human-readable label: '2024-11', '2024-W45', '2024-10-01'
--- This table is what Power BI will query for charts and visuals.
 CREATE TABLE IF NOT EXISTS entries (
   id         INT AUTO_INCREMENT PRIMARY KEY,
   kpi_id     INT NOT NULL,
@@ -62,9 +42,7 @@ CREATE TABLE IF NOT EXISTS entries (
   FOREIGN KEY (kpi_id) REFERENCES kpis(id) ON DELETE CASCADE
 );
 
--- ── Useful view for Power BI ───────────────────────────────────
--- This VIEW joins all 3 tables so Power BI connects to one clean table
--- instead of having to understand all the relationships itself.
+-- Flat view used by Power BI — joins all tables into one queryable surface
 CREATE OR REPLACE VIEW kpi_performance AS
 SELECT
   e.id          AS entry_id,
@@ -85,6 +63,6 @@ SELECT
   e.note,
   e.created_at
 FROM entries e
-JOIN kpis k        ON e.kpi_id     = k.id
+JOIN kpis k             ON e.kpi_id        = k.id
 LEFT JOIN departments d ON k.department_id = d.id
-JOIN users u       ON k.user_id    = u.id;
+JOIN users u            ON k.user_id       = u.id;

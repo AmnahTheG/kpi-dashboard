@@ -1,17 +1,3 @@
-# app.py
-# ---------------------------------------------------------------
-# KPI Dashboard - Python Flask Backend
-#
-# This is the web server. It handles:
-#   - Showing the dashboard HTML page
-#   - API endpoints to Create/Read/Update/Delete KPIs and entries
-#   - Simple session-based login (no JWT needed for this scale)
-#
-# Run it:
-#   python app.py
-# Then open: http://localhost:5000
-# ---------------------------------------------------------------
-
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 import mysql.connector
 import bcrypt
@@ -20,23 +6,21 @@ import os
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "change_this_before_deploying")
 
-# ── Database connection helper ─────────────────────────────────
-# Called at the start of every request that needs the database.
+
 def get_db():
     return mysql.connector.connect(
         host     = os.environ.get("DB_HOST",     "localhost"),
         user     = os.environ.get("DB_USER",     "root"),
-        password = os.environ.get("DB_PASSWORD", "your_mysql_password"),
+        password = os.environ.get("DB_PASSWORD", ""),
         database = os.environ.get("DB_NAME",     "kpi_dashboard")
     )
 
-# ── Auth helper ────────────────────────────────────────────────
+
 def current_user():
-    """Returns the logged-in user dict from the session, or None."""
     return session.get("user")
 
+
 def login_required(fn):
-    """Decorator: redirects to /login if user is not logged in."""
     from functools import wraps
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -45,20 +29,23 @@ def login_required(fn):
         return fn(*args, **kwargs)
     return wrapper
 
-# ════════════════════════════════════════════════════════════════
-#  AUTH ROUTES
-# ════════════════════════════════════════════════════════════════
+
+# ── Pages ──────────────────────────────────────────────────────
 
 @app.route("/")
 @login_required
 def index():
     return render_template("dashboard.html", user=current_user())
 
+
 @app.route("/login", methods=["GET"])
 def login_page():
     if current_user():
         return redirect(url_for("index"))
     return render_template("login.html")
+
+
+# ── Auth ───────────────────────────────────────────────────────
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
@@ -76,13 +63,17 @@ def api_login():
     cursor.close()
     db.close()
 
-    # bcrypt.checkpw compares plain password against the stored hash
     if not user or not bcrypt.checkpw(password.encode(), user["password"].encode()):
         return jsonify({"error": "Invalid credentials"}), 401
 
-    # Store safe user info in the server session (no password!)
-    session["user"] = {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}
+    session["user"] = {
+        "id":    user["id"],
+        "name":  user["name"],
+        "email": user["email"],
+        "role":  user["role"]
+    }
     return jsonify({"message": "Logged in", "user": session["user"]})
+
 
 @app.route("/api/register", methods=["POST"])
 def api_register():
@@ -94,7 +85,6 @@ def api_register():
     if not name or not email or not password:
         return jsonify({"error": "name, email, and password are required"}), 400
 
-    # Hash the password — bcrypt automatically handles the salt
     hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
     try:
@@ -111,14 +101,14 @@ def api_register():
     except mysql.connector.IntegrityError:
         return jsonify({"error": "Email already registered"}), 409
 
+
 @app.route("/api/logout", methods=["POST"])
 def api_logout():
     session.clear()
     return jsonify({"message": "Logged out"})
 
-# ════════════════════════════════════════════════════════════════
-#  KPI ROUTES
-# ════════════════════════════════════════════════════════════════
+
+# ── KPIs ───────────────────────────────────────────────────────
 
 @app.route("/api/kpis", methods=["GET"])
 @login_required
@@ -150,15 +140,16 @@ def get_kpis():
     db.close()
     return jsonify(kpis)
 
+
 @app.route("/api/kpis", methods=["POST"])
 @login_required
 def create_kpi():
-    data        = request.get_json()
-    name        = data.get("name")
-    unit        = data.get("unit")
-    target      = data.get("target")
-    frequency   = data.get("frequency", "monthly")
-    dept_name   = data.get("department", "General")
+    data      = request.get_json()
+    name      = data.get("name")
+    unit      = data.get("unit")
+    target    = data.get("target")
+    frequency = data.get("frequency", "monthly")
+    dept_name = data.get("department", "General")
 
     if not name or not unit or target is None:
         return jsonify({"error": "name, unit, and target are required"}), 400
@@ -166,7 +157,6 @@ def create_kpi():
     db     = get_db()
     cursor = db.cursor()
 
-    # Get or create the department
     cursor.execute("SELECT id FROM departments WHERE name = %s", (dept_name,))
     row = cursor.fetchone()
     if row:
@@ -186,6 +176,7 @@ def create_kpi():
     cursor.close()
     db.close()
     return jsonify({"message": "KPI created", "id": new_id}), 201
+
 
 @app.route("/api/kpis/<int:kpi_id>", methods=["DELETE"])
 @login_required
@@ -208,9 +199,8 @@ def delete_kpi(kpi_id):
     db.close()
     return jsonify({"message": "KPI deleted"})
 
-# ════════════════════════════════════════════════════════════════
-#  ENTRY ROUTES
-# ════════════════════════════════════════════════════════════════
+
+# ── Entries ────────────────────────────────────────────────────
 
 @app.route("/api/entries", methods=["GET"])
 @login_required
@@ -229,6 +219,7 @@ def get_entries():
     cursor.close()
     db.close()
     return jsonify(entries)
+
 
 @app.route("/api/entries", methods=["POST"])
 @login_required
@@ -254,6 +245,7 @@ def create_entry():
     db.close()
     return jsonify({"message": "Entry logged", "id": new_id}), 201
 
+
 @app.route("/api/entries/<int:entry_id>", methods=["DELETE"])
 @login_required
 def delete_entry(entry_id):
@@ -270,9 +262,8 @@ def delete_entry(entry_id):
     db.close()
     return jsonify({"message": "Entry deleted"})
 
-# ════════════════════════════════════════════════════════════════
-#  DEPARTMENTS LIST (for dropdowns)
-# ════════════════════════════════════════════════════════════════
+
+# ── Departments ────────────────────────────────────────────────
 
 @app.route("/api/departments", methods=["GET"])
 @login_required
@@ -285,7 +276,6 @@ def get_departments():
     db.close()
     return jsonify(depts)
 
-# ════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
